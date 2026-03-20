@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Quiz · Misiles Balísticos · Análisis Numérico</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$','$']],
+    displayMath: [['$$','$$']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   VARIABLES Y RESET
+═══════════════════════════════════════════════ */
+:root{
+  --bg:       #f8f9fa;
+  --bg2:      #ffffff;
+  --bg3:      #f1f3f5;
+  --border:   #dee2e6;
+  --text:     #212529;
+  --muted:    #6c757d;
+  --shadow:   0 2px 12px rgba(0,0,0,.08);
+
+  /* colores de los 10 quizzes (fieles al .tex) */
+  --c1:#E63946; --c1l:#FFF0F0;
+  --c2:#D4762A; --c2l:#FFF6EE;
+  --c3:#2A9D8F; --c3l:#EDFAF8;
+  --c4:#6A0572; --c4l:#F8EEFB;
+  --c5:#1D3557; --c5l:#EEF3FA;
+  --c6:#C45E3A; --c6l:#FDF2EE;
+  --c7:#457B9D; --c7l:#EDF4FA;
+  --c8:#2D6A4F; --c8l:#EEF8F3;
+  --c9:#9B2226; --c9l:#FDECEA;
+  --c10:#3A0CA3;--c10l:#EDE7FB;
+  --codebg:#1E1E2E;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
+
+/* ══ PASSWORD MODAL ══ */
+.pw-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;
+  animation:fadeup .2s ease;
+}
+.pw-overlay.hidden{display:none;}
+.pw-modal{
+  background:#fff;border-radius:12px;padding:2rem 1.8rem;
+  width:min(90vw,380px);box-shadow:0 8px 40px rgba(0,0,0,.25);
+  text-align:center;
+}
+.pw-icon{font-size:2.2rem;margin-bottom:.6rem;display:block;}
+.pw-title{font-size:1.1rem;font-weight:800;margin-bottom:.2rem;color:var(--text);}
+.pw-sub{font-size:.78rem;color:var(--muted);margin-bottom:1.2rem;}
+.pw-inp{
+  width:100%;background:var(--bg3);border:1.5px solid var(--border);
+  border-radius:8px;padding:.7rem 1rem;text-align:center;
+  font-family:'Inter',sans-serif;font-size:1.1rem;font-weight:600;letter-spacing:.15em;
+  outline:none;transition:all .2s;margin-bottom:.8rem;
+}
+.pw-inp:focus{border-color:var(--c5);box-shadow:0 0 0 3px rgba(29,53,87,.12);}
+.pw-inp.error{border-color:var(--c1);animation:shake .3s ease;}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.pw-btn{
+  width:100%;padding:.8rem;border:none;border-radius:8px;
+  font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.pw-err{font-size:.75rem;color:var(--c1);margin-top:.4rem;display:none;height:1rem;}
+
+/* ══ END PASSWORD MODAL ══ */
+/* ── CABECERA ── */
+.site-header{
+  background:var(--c5);
+  color:#fff;
+  padding:.75rem 1.5rem;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:.5rem;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+.hdr-left{font-size:.75rem;opacity:.85;font-family:'JetBrains Mono',monospace;}
+.hdr-left strong{color:#ffd166;font-size:.85rem;}
+.hdr-right{font-size:.7rem;opacity:.7;text-align:right;}
+
+/* ── WRAP ── */
+.wrap{max-width:780px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+
+/* ── SCREENS ── */
+.screen{display:none;}
+.screen.on{display:block;animation:fadeup .35s ease;}
+@keyframes fadeup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ══════════════════════════════════════
+   PANTALLA REGISTRO
+══════════════════════════════════════ */
+.reg-hero{
+  background:var(--c5);
+  color:#fff;
+  border-radius:12px;
+  padding:2rem 1.5rem 1.5rem;
+  text-align:center;
+  margin-bottom:1.5rem;
+}
+.reg-hero .emoji{font-size:2.8rem;display:block;margin-bottom:.75rem;}
+.reg-hero h1{
+  font-size:clamp(1.4rem,4vw,2rem);
+  font-weight:800;letter-spacing:-.02em;margin-bottom:.3rem;
+}
+.reg-hero h1 span{color:#ffd166;}
+.reg-hero p{font-size:.82rem;opacity:.8;line-height:1.7;}
+.reg-sub{
+  font-size:.7rem;margin-top:.6rem;opacity:.65;
+  font-family:'JetBrains Mono',monospace;letter-spacing:.05em;
+}
+
+.reg-card{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:1.6rem;
+  box-shadow:var(--shadow);
+}
+.reg-card h2{
+  font-size:.9rem;font-weight:700;color:var(--c5);
+  margin-bottom:1.2rem;letter-spacing:.04em;text-transform:uppercase;
+}
+
+.fld{margin-bottom:1rem;}
+.fld label{
+  display:block;font-size:.7rem;font-weight:600;
+  color:var(--muted);letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:.35rem;
+}
+.fld input,.fld select{
+  width:100%;
+  background:var(--bg3);
+  border:1.5px solid var(--border);
+  border-radius:7px;
+  padding:.65rem .9rem;
+  font-family:'Inter',sans-serif;font-size:.9rem;color:var(--text);
+  outline:none;transition:all .2s;
+}
+.fld input:focus,.fld select:focus{
+  border-color:var(--c5);
+  box-shadow:0 0 0 3px rgba(29,53,87,.12);
+}
+.fld-row{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;}
+
+/* selector de quizzes */
+.quiz-sel-title{
+  font-size:.7rem;font-weight:600;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem;
+}
+.qsel-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;margin-bottom:1.1rem;}
+.qsel-btn{
+  padding:.5rem .2rem;border-radius:6px;
+  border:1.5px solid var(--border);background:transparent;
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  color:var(--muted);cursor:pointer;text-align:center;transition:all .18s;
+}
+.qsel-btn.on{border-color:var(--c5);color:var(--c5);background:var(--c5l);}
+
+.gh-info{
+  display:none;margin-bottom:1rem;padding:.5rem .8rem;
+  background:#eef8f3;border:1px solid #2D6A4F;border-radius:6px;
+  font-size:.68rem;color:#2D6A4F;align-items:center;gap:.5rem;
+}
+.gh-info.show{display:flex;}
+
+.err-msg{color:var(--c1);font-size:.75rem;margin-bottom:.8rem;display:none;}
+
+.btn-start{
+  width:100%;padding:.85rem;border:none;border-radius:8px;
+  background:var(--c5);color:#fff;
+  font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;
+  cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:.5rem;
+}
+.btn-start:hover{background:#162840;box-shadow:0 4px 16px rgba(29,53,87,.3);}
+
+/* ══════════════════════════════════════
+   BARRA SUPERIOR DEL QUIZ
+══════════════════════════════════════ */
+.quiz-topbar{
+  display:flex;align-items:center;gap:.75rem;
+  margin-bottom:1.2rem;flex-wrap:wrap;
+}
+.qz-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.72rem;font-weight:600;white-space:nowrap;
+}
+.prog-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;min-width:60px;}
+.prog-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.timer-badge{
+  font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:600;
+  padding:.28rem .65rem;border-radius:20px;border:1.5px solid var(--border);
+  min-width:46px;text-align:center;transition:all .3s;
+}
+.timer-badge.w{border-color:#e67700;color:#e67700;background:#fff8f0;}
+.timer-badge.u{border-color:var(--c1);color:var(--c1);background:#fff0f0;animation:blink .5s step-end infinite alternate;}
+@keyframes blink{to{opacity:.4}}
+
+/* ══════════════════════════════════════
+   TARJETA DE PREGUNTA
+══════════════════════════════════════ */
+.qcard{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  margin-bottom:1rem;
+  box-shadow:var(--shadow);
+}
+.qcard-header{
+  padding:.6rem 1rem;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.qcard-tag{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+}
+.qcard-num{font-size:.68rem;color:var(--muted);}
+.qcard-body{padding:1.2rem 1rem;}
+.qtxt{font-size:.92rem;font-weight:600;line-height:1.75;margin-bottom:1.1rem;color:var(--text);}
+.qtxt code{
+  background:#1E1E2E;color:#89DDFF;
+  padding:.12em .4em;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.83em;
+}
+
+/* bloque de código */
+.code-blk{
+  background:#1E1E2E;border-radius:7px;
+  padding:.9rem 1rem;margin-bottom:1rem;
+  font-family:'JetBrains Mono',monospace;font-size:.78rem;
+  line-height:1.75;color:#cdd9e5;overflow-x:auto;white-space:pre;
+}
+.kw{color:#89DDFF;font-weight:600;}
+.st{color:#C3E88D;}
+.cm{color:#888;font-style:italic;}
+.nm{color:#F78C6C;}
+
+/* ── opciones múltiple ── */
+.opts{display:flex;flex-direction:column;gap:.5rem;}
+.opt-btn{
+  display:flex;align-items:flex-start;gap:.75rem;
+  padding:.75rem .9rem;
+  background:var(--bg3);border:1.5px solid var(--border);border-radius:7px;
+  cursor:pointer;text-align:left;font-family:'Inter',sans-serif;
+  font-size:.84rem;line-height:1.55;color:var(--text);
+  transition:all .16s;width:100%;
+}
+.opt-btn:hover:not(:disabled){border-color:rgba(29,53,87,.4);background:#eef3fa;transform:translateX(3px);}
+.opt-key{
+  font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:600;
+  color:var(--muted);min-width:20px;background:var(--border);
+  border-radius:3px;padding:.1em .35em;text-align:center;flex-shrink:0;margin-top:1px;
+}
+.opt-btn.sel{border-color:var(--c5);background:var(--c5l);}
+.opt-btn.sel .opt-key{background:var(--c5);color:#fff;}
+.opt-btn.ok{border-color:#2D6A4F;background:#eef8f3;pointer-events:none;}
+.opt-btn.ok .opt-key{background:#2D6A4F;color:#fff;}
+.opt-btn.ko{border-color:var(--c1);background:#fff0f0;pointer-events:none;}
+.opt-btn.ko .opt-key{background:var(--c1);color:#fff;}
+.opt-btn:disabled{cursor:default;}
+
+/* ── V/F ── */
+.vf-row{display:flex;gap:.6rem;}
+.vf-btn{
+  flex:1;padding:.65rem;border-radius:7px;border:1.5px solid var(--border);
+  background:var(--bg3);font-family:'Inter',sans-serif;
+  font-size:.88rem;font-weight:700;color:var(--muted);
+  cursor:pointer;text-align:center;transition:all .18s;
+}
+.vf-btn:hover:not(:disabled){border-color:#e67700;color:#e67700;background:#fff8f0;}
+.vf-btn.sel{border-color:#e67700;color:#e67700;background:#fff8f0;}
+.vf-btn.ok{border-color:#2D6A4F;color:#2D6A4F;background:#eef8f3;pointer-events:none;}
+.vf-btn.ko{border-color:var(--c1);color:var(--c1);background:#fff0f0;pointer-events:none;}
+.vf-btn:disabled{cursor:default;}
+
+/* ── completar ── */
+.fill-inp{
+  width:100%;background:var(--bg3);border:1.5px solid var(--border);
+  border-radius:7px;padding:.65rem .9rem;
+  font-family:'Inter',sans-serif;font-size:.88rem;color:var(--text);
+  outline:none;transition:all .2s;margin-top:.4rem;
+}
+.fill-inp:focus{border-color:#e67700;box-shadow:0 0 0 3px rgba(230,119,0,.1);}
+.fill-inp:disabled{opacity:.6;cursor:default;}
+.fill-submit{
+  margin-top:.5rem;padding:.55rem 1.2rem;
+  border:1.5px solid var(--c5);border-radius:7px;
+  background:transparent;color:var(--c5);
+  font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;
+  cursor:pointer;transition:all .2s;
+}
+.fill-submit:hover{background:var(--c5l);}
+
+/* ── feedback ── */
+.fb-box{
+  display:none;margin-top:.75rem;padding:.8rem 1rem;
+  border-radius:7px;border:1px solid;font-size:.8rem;line-height:1.65;
+  gap:.6rem;
+}
+.fb-box.show{display:flex;animation:fadeup .25s ease;}
+.fb-box.ok{border-color:#2D6A4F;background:#eef8f3;color:#2D6A4F;}
+.fb-box.ko{border-color:var(--c1);background:#fff0f0;color:var(--c1);}
+.fb-ico{font-size:.95rem;flex-shrink:0;margin-top:1px;}
+
+/* nav */
+.qnav{display:flex;align-items:center;justify-content:flex-end;gap:.7rem;margin-top:.5rem;}
+.live-score{font-size:.72rem;color:var(--muted);margin-right:auto;}
+.live-score strong{color:#2D6A4F;}
+
+.btn-next{
+  padding:.65rem 1.3rem;border:1.5px solid var(--border);border-radius:7px;
+  background:var(--bg2);color:var(--text);
+  font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;
+  cursor:pointer;transition:all .2s;
+}
+.btn-next:hover:not(:disabled){border-color:var(--c5);color:var(--c5);}
+.btn-next:disabled{opacity:.35;cursor:default;}
+
+/* ══════════════════════════════════════
+   RESULTADOS
+══════════════════════════════════════ */
+.res-top{
+  text-align:center;padding:2rem 0 1.5rem;
+  border-bottom:1px solid var(--border);margin-bottom:1.5rem;
+}
+.grade-ring{
+  width:120px;height:120px;border-radius:50%;
+  border:4px solid var(--border);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  margin:0 auto 1.1rem;transition:all .4s;
+}
+.grade-ring.pass{border-color:#2D6A4F;box-shadow:0 0 28px rgba(45,106,79,.2);}
+.grade-ring.fail{border-color:var(--c1);box-shadow:0 0 20px rgba(230,57,70,.15);}
+.gpct{font-size:2.1rem;font-weight:800;letter-spacing:-.04em;line-height:1;}
+.gpct.pass{color:#2D6A4F;}
+.gpct.fail{color:var(--c1);}
+.gsub{font-size:.6rem;color:var(--muted);letter-spacing:.08em;margin-top:.15rem;font-family:'JetBrains Mono',monospace;}
+.sname{font-size:1rem;font-weight:700;margin-bottom:.25rem;}
+.sci{font-size:.78rem;color:var(--muted);margin-bottom:.4rem;font-family:'JetBrains Mono',monospace;}
+.verd{
+  font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  padding:.3rem 1rem;border-radius:20px;display:inline-block;margin-top:.3rem;
+}
+.verd.pass{background:#eef8f3;color:#2D6A4F;border:1px solid rgba(45,106,79,.3);}
+.verd.fail{background:#fff0f0;color:var(--c1);border:1px solid rgba(230,57,70,.3);}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:1.4rem;}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.85rem;text-align:center;}
+.stat-v{font-family:'JetBrains Mono',monospace;font-size:1.25rem;font-weight:700;display:block;margin-bottom:.15rem;}
+.stat-l{font-size:.6rem;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;}
+
+/* por-quiz scores */
+.qz-row{display:grid;grid-template-columns:repeat(5,1fr);gap:.45rem;margin-bottom:1.3rem;}
+.qzs{border-radius:7px;padding:.6rem .3rem;text-align:center;border:1px solid var(--border);}
+.qzs-label{font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.2rem;}
+.qzs-val{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;}
+
+/* revisión */
+.sec-title{
+  font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin:1.3rem 0 .65rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.rev-item{
+  background:var(--bg2);border:1px solid var(--border);
+  border-left:3px solid var(--border);border-radius:8px;
+  padding:.9rem 1rem;margin-bottom:.55rem;
+}
+.rev-item.ok{border-left-color:#2D6A4F;}
+.rev-item.ko{border-left-color:var(--c1);}
+.rev-q{font-size:.8rem;line-height:1.5;margin-bottom:.4rem;}
+.rev-ans{font-size:.73rem;display:flex;gap:.9rem;flex-wrap:wrap;}
+.rev-yours{color:var(--muted);}
+.rev-corr{color:#2D6A4F;font-weight:600;}
+.rev-expl{font-size:.72rem;color:var(--c5);margin-top:.35rem;line-height:1.5;font-style:italic;}
+
+/* ranking */
+.lb-row{
+  display:flex;align-items:center;gap:.9rem;
+  background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:.65rem .9rem;margin-bottom:.4rem;font-size:.78rem;
+}
+.lb-row.me{border-color:var(--c5);background:var(--c5l);}
+.lb-rank{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:700;min-width:24px;}
+.lb-name{flex:1;font-weight:600;}
+.lb-meta{font-size:.65rem;color:var(--muted);}
+.lb-nota{font-family:'JetBrains Mono',monospace;font-size:.9rem;font-weight:700;min-width:48px;text-align:right;}
+.lb-nota.pass{color:#2D6A4F;}
+.lb-nota.fail{color:var(--c1);}
+
+/* gh status */
+.gh-status{
+  display:flex;align-items:center;gap:.5rem;
+  font-size:.65rem;color:var(--muted);padding:.45rem .8rem;
+  background:var(--bg3);border:1px solid var(--border);border-radius:6px;margin-bottom:.8rem;
+}
+.gh-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+
+/* action row */
+.actrow{display:flex;gap:.6rem;margin-top:1.5rem;flex-wrap:wrap;}
+.btn-act{
+  padding:.7rem 1.3rem;border:1.5px solid var(--border);border-radius:7px;
+  background:var(--bg2);color:var(--text);
+  font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;
+  cursor:pointer;transition:all .2s;
+}
+.btn-act:hover{border-color:var(--c5);color:var(--c5);}
+.btn-act.primary{background:var(--c5);color:#fff;border-color:var(--c5);flex:1;min-width:160px;justify-content:center;}
+.btn-act.primary:hover{background:#162840;}
+
+/* footer */
+.page-footer{
+  text-align:center;padding:.75rem;
+  font-size:.65rem;color:var(--muted);
+  font-family:'JetBrains Mono',monospace;
+  border-top:1px solid var(--border);margin-top:2rem;
+}
+
+@media(max-width:520px){
+  .stats-grid,.qz-row{grid-template-columns:repeat(2,1fr);}
+  .fld-row{grid-template-columns:1fr;}
+  .qsel-grid{grid-template-columns:repeat(5,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- ── CABECERA ── -->
+<header class="site-header">
+  <div class="hdr-left">
+    <strong>Mini Quiz</strong> · Misiles Balísticos · Análisis Numérico
+  </div>
+  <div class="hdr-right">Yerko Aldair Quispe Ticona</div>
+</header>
+
+<div class="wrap">
+
+<!-- ════════════════════════════════════
+     PANTALLA: REGISTRO
+════════════════════════════════════ -->
+<div class="screen on" id="s-reg">
+
+  <div class="reg-hero">
+    <span class="emoji">🚀</span>
+    <h1>Mini Quiz<br><span>Misiles Balísticos</span></h1>
+    <p>10 quizzes · 4 preguntas cada uno · ~5 min por quiz</p>
+    <p style="font-size:.72rem;opacity:.65;margin-top:.3rem;">🔐 Cada quiz tiene contraseña individual</p>
+    <div class="reg-sub">Análisis Numérico · ACP–KCP · Gestión 2026</div>
+  </div>
+
+  <div class="reg-card">
+    <h2>📋 Datos del Estudiante</h2>
+
+    <div class="fld">
+      <label>Nombre y Apellido</label>
+      <input id="i-name" type="text" placeholder="Ej: Juan Carlos Mamani Flores">
+    </div>
+
+    <div class="fld">
+      <label>Carnet de Identidad (CI)</label>
+      <input id="i-ci" type="text" placeholder="Ej: 12345678">
+    </div>
+
+    <div class="quiz-sel-title">Seleccionar Quiz(zes) a rendir</div>
+    <div class="qsel-grid">
+      <button class="qsel-btn on" onclick="toggleQ(this,1)">Q1</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,2)">Q2</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,3)">Q3</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,4)">Q4</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,5)">Q5</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,6)">Q6</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,7)">Q7</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,8)">Q8</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,9)">Q9</button>
+      <button class="qsel-btn"    onclick="toggleQ(this,10)">Q10</button>
+    </div>
+
+    <!-- Badge GitHub (aparece si hay token en la URL) -->
+    <div class="gh-info" id="gh-info">
+      <span>✓</span><span>Notas se guardarán automáticamente en GitHub</span>
+    </div>
+
+    <p class="err-msg" id="reg-err">⚠ Por favor completa todos los campos.</p>
+    <button class="btn-start" onclick="begin()">▶ &nbsp;Comenzar Quiz</button>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════
+     PANTALLA: QUIZ
+════════════════════════════════════ -->
+<div class="screen" id="s-quiz">
+  <div class="quiz-topbar">
+    <div class="qz-label" id="qz-label">Q1 · P1</div>
+    <div class="prog-track">
+      <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+    <div class="timer-badge" id="timer-badge">5:00</div>
+  </div>
+
+  <div class="qcard" id="qcard">
+    <div class="qcard-header">
+      <span class="qcard-tag" id="qtag">Opción Múltiple</span>
+      <span class="qcard-num" id="qnum">Pregunta 1 de 4</span>
+    </div>
+    <div class="qcard-body">
+      <div class="qtxt" id="qtxt"></div>
+      <div id="qcode" style="display:none"></div>
+      <div id="qbody"></div>
+      <div class="fb-box" id="fb-box">
+        <div class="fb-ico" id="fb-ico"></div>
+        <div id="fb-txt"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qnav">
+    <div class="live-score">Aciertos: <strong id="live">0</strong></div>
+    <button class="btn-next" id="btn-next" onclick="nextQ()" disabled>Siguiente →</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     PANTALLA: RESULTADOS
+════════════════════════════════════ -->
+<div class="screen" id="s-res">
+
+  <div class="res-top">
+    <div class="grade-ring" id="grade-ring">
+      <div class="gpct" id="gpct"></div>
+      <div class="gsub">NOTA</div>
+    </div>
+    <div class="sname" id="res-name"></div>
+    <div class="sci"   id="res-ci"></div>
+    <div class="verd"  id="res-verd"></div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat"><span class="stat-v" id="rs-ok">0</span><div class="stat-l">Correctas</div></div>
+    <div class="stat"><span class="stat-v" id="rs-ko">0</span><div class="stat-l">Incorrectas</div></div>
+    <div class="stat"><span class="stat-v" id="rs-tot">0</span><div class="stat-l">Total Px</div></div>
+    <div class="stat"><span class="stat-v" id="rs-t">0s</span><div class="stat-l">Tiempo</div></div>
+  </div>
+
+  <div class="sec-title">Puntaje por Quiz</div>
+  <div class="qz-row" id="qz-scores"></div>
+
+  <div class="sec-title">Estado GitHub</div>
+  <div class="gh-status">
+    <div class="gh-dot" id="gh-dot"></div>
+    <span id="gh-msg">Sin token configurado — notas guardadas localmente.</span>
+  </div>
+
+  <div class="sec-title">Revisión de Respuestas</div>
+  <div id="rev-list"></div>
+
+  <div class="sec-title">Registro de Notas</div>
+  <div id="lb-list"></div>
+
+  <div class="actrow">
+    <button class="btn-act primary" onclick="retry()">↺ &nbsp;Nuevo Intento</button>
+    <button class="btn-act" onclick="doCSV()">⬇ CSV</button>
+    <button class="btn-act" onclick="doClr()">🗑 Limpiar</button>
+  </div>
+
+</div>
+
+<div class="page-footer">
+  Mini Quiz · Misiles Balísticos · Análisis Numérico 2026<br>
+  Elaborado por Yerko Aldair Quispe Ticona
+</div>
+
+</div><!-- /wrap -->
+
+<!-- ════ MODAL CONTRASEÑA ════ -->
+<div class="pw-overlay hidden" id="pw-overlay">
+  <div class="pw-modal">
+    <span class="pw-icon" id="pw-icon">🔐</span>
+    <div class="pw-title" id="pw-title">Contraseña requerida</div>
+    <div class="pw-sub" id="pw-sub">Ingresa la contraseña para acceder al quiz</div>
+    <input class="pw-inp" id="pw-inp" type="password"
+      placeholder="••••••"
+      onkeydown="if(event.key==='Enter') checkPassword()">
+    <button class="pw-btn" id="pw-btn" onclick="checkPassword()">
+      Ingresar →
+    </button>
+    <div class="pw-err" id="pw-err">⚠ Contraseña incorrecta</div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  COLORES POR QUIZ (fieles al .tex)
+// ══════════════════════════════════════════════════════════
+const QZ_COLORS = {
+  1:'#E63946', 2:'#D4762A', 3:'#2A9D8F', 4:'#6A0572', 5:'#1D3557',
+  6:'#C45E3A', 7:'#457B9D', 8:'#2D6A4F', 9:'#9B2226', 10:'#3A0CA3'
+};
+const QZ_COLORS_L = {
+  1:'#FFF0F0', 2:'#FFF6EE', 3:'#EDFAF8', 4:'#F8EEFB', 5:'#EEF3FA',
+  6:'#FDF2EE', 7:'#EDF4FA', 8:'#EEF8F3', 9:'#FDECEA', 10:'#EDE7FB'
+};
+
+// ══════════════════════════════════════════════════════════
+//  BANCO COMPLETO DE PREGUNTAS (fiel al .tex)
+// ══════════════════════════════════════════════════════════
+const QUIZZES = {
+1:{
+  title:"Ecuación de Movimiento Newtoniana",
+  qs:[
+    {type:"mc",
+     txt:"¿Cuál es la expresión correcta de la fuerza de propulsión del misil?",
+     opts:["$\vec{f}_p = \dfrac{dm}{dt}\,\vec{v}$",
+           "$\vec{f}_p = -v_e\dfrac{dm}{dt}\,\hat{v}$",
+           "$\vec{f}_p = m\,\vec{g}$",
+           "$\vec{f}_p = -\beta\,\vec{v}$"],
+     ok:1,
+     fb:"La fuerza de propulsión es $\vec{f}_p = \frac{dm}{dt}\vec{v}\' = -v_e\frac{dm}{dt}\hat{v}$. Como $\dot{m}<0$, el empuje apunta en la dirección del movimiento."},
+    {type:"mc",
+     txt:"Al cancelar el término $\dfrac{dm}{dt}\vec{v}$ de ambos lados, la ecuación de movimiento queda:",
+     opts:["$m\dot{v} = -v_e\dot{m} + mg - \beta v$",
+           "$m\dot{v} = -v_e\dot{m} - mg - \beta v$",
+           "$m\dot{v} = v_e\dot{m} - mg + \beta v$",
+           "$m\dot{v} = -mg - \beta v$"],
+     ok:1,
+     fb:"Componente vertical: $m\dot{v} = -v_e\dot{m} - mg - \beta v$. El empuje $-v_e\dot{m}>0$ (ya que $\dot{m}<0$), la gravedad $-mg$ y la fricción $-\beta v$."},
+    {type:"vf",
+     txt:"Si $\dot{m}<0$ (el misil pierde masa), el empuje $-v_e\dot{m}$ apunta en la dirección del movimiento.",
+     ok:true,
+     fb:"VERDADERO. $-v_e\cdot\dot{m}$: como $v_e>0$ y $\dot{m}<0$, el producto es positivo, apunta en la dirección del movimiento."},
+    {type:"fill",
+     txt:"Las tres fuerzas externas en la ecuación de movimiento son: el _____, la _____ y la _____ del aire.",
+     ok:["empuje peso friccion","empuje gravedad friccion","thrust peso friccion","propulsion peso friccion"],
+     fb:"Las tres fuerzas son: el EMPUJE (propulsión), el PESO (m·g) y la FRICCIÓN del aire (−β·v)."}
+  ]
+},
+2:{
+  title:"Caso con Masa Variable",
+  qs:[
+    {type:"mc",
+     txt:"Con tasa de consumo constante $\dot{m}=-\mu$, la masa del misil es:",
+     opts:["$m(t) = m_0 + \mu t$",
+           "$m(t) = m_0 - \mu t$",
+           "$m(t) = m_0\,e^{-\mu t}$",
+           "$m(t) = \mu\,t$"],
+     ok:1,
+     fb:"Con ṁ = −μ (constante): dm/dt = −μ → m(t) = m₀ − μt. Decrece linealmente."},
+    {type:"mc",
+     txt:"El factor integrante de la EDO con masa variable es:",
+     opts:["$e^{\beta t}$",
+           "$(m_0 - \mu t)^{\,\beta/\mu}$",
+           "$(m_0 - \mu t)^{-\beta/\mu}$",
+           "$m_0^{-\beta/\mu}$"],
+     ok:2,
+     fb:"La EDO: dv/dt + β/(m₀−μt)·v = F/m. Factor integrante: exp(∫β/(m₀−μt)dt) = (m₀−μt)^(−β/μ)."},
+    {type:"vf",
+     txt:"La solución general con masa variable es válida para cualquier valor de $\beta$, incluyendo $\beta = \mu$.",
+     ok:false,
+     fb:"FALSO. Cuando β = μ el factor (m₀−μt)^(−β/μ) = (m₀−μt)^(−1) genera singularidad logarítmica. Requiere tratamiento especial."},
+    {type:"fill",
+     txt:"Con $m_0=1000\,\text{kg}$ y $\mu=5\,\text{kg/s}$, el combustible se agota en $t_{\max}=\,$_____ s si hay $600\,\text{kg}$ de combustible.",
+     ok:["120","120 s","120s"],
+     fb:"t_max = combustible / μ = 600 / 5 = 120 s."}
+  ]
+},
+3:{
+  title:"Caso de Masa Constante (m = cte)",
+  qs:[
+    {type:"mc",
+     txt:"La velocidad terminal para masa constante es:",
+     opts:["$v_\infty = -\beta g/m$",
+           "$v_\infty = -mg/\beta$",
+           "$v_\infty = mg/\beta$",
+           "$v_\infty = -m\beta/g$"],
+     ok:1,
+     fb:"En equilibrio $dv/dt=0$: $0=-mg-\beta v_\infty \Rightarrow v_\infty=-mg/\beta<0$ (hacia abajo)."},
+    {type:"mc",
+     txt:"La constante de tiempo del sistema es $\tau = m/\beta$. ¿Cuántos $\tau$ tarda la velocidad en llegar al $\approx 63\%$ de $v_\infty$?",
+     opts:["0.5","1","2","5"],
+     ok:1,
+     fb:"$v(t) = v_\infty + (v_0-v_\infty)e^{-t/\tau}$. En $t=\tau$: $1-e^{-1}\approx 0.632$ → 63% del camino hacia $v_\infty$."},
+    {type:"vf",
+     txt:"Cuando $\beta \to 0$, la solución de masa constante se reduce a la caída libre $v(t)=v_0 - gt$.",
+     ok:true,
+     fb:"VERDADERO. Con $\beta\to 0$: $\tau\to\infty$, $e^{-t/\tau}\to 1-t/\tau$, y la solución converge a $v(t)=v_0-gt$."},
+    {type:"fill",
+     txt:"La posición para masa constante contiene el factor $\left(1-e^{-(\beta/m)t}\right)$ multiplicado por _____, más el término lineal $-\dfrac{mg}{\beta}t$.",
+     ok:["(v0+mg/beta)m/beta","m/beta(v0+mg/beta)","(m/β)(v₀+mg/β)"],
+     fb:"$x(t) = x_0 + \frac{m}{\beta}\!\left(v_0+\frac{mg}{\beta}\right)\!\left(1-e^{-\beta t/m}\right) - \frac{mg}{\beta}t$. El factor multiplicador es $\frac{m}{\beta}\!\left(v_0+\frac{mg}{\beta}\right)$."}
+  ]
+},
+4:{
+  title:"Caso sin Fricción — Teorema de Tsiolkovsky",
+  qs:[
+    {type:"mc",
+     txt:"El Teorema de Tsiolkovsky establece que la ganancia de velocidad es:",
+     opts:["$\Delta v = v_e\,\dfrac{m_0}{m_f}$",
+           "$\Delta v = v_e\ln\!\left(\dfrac{m_0}{m_f}\right)$",
+           "$\Delta v = v_e\left(\dfrac{m_f}{m_0}\right)$",
+           "$\Delta v = \dfrac{m_0}{m_f} - g\,t$"],
+     ok:1,
+     fb:"Integrando $m\,dv = -v_e\,dm$ con $g=\beta=0$: $\Delta v = v_e\ln(m_0/m_f)$. Relación logarítmica con la razón de masas."},
+    {type:"mc",
+     txt:"Con $v_e=2500\,\text{m/s}$, $m_0=1000\,\text{kg}$, $m_f=400\,\text{kg}$, ¿cuánto vale $\Delta v$ (sin gravedad)?",
+     opts:["$\approx 1145\,\text{m/s}$",
+           "$\approx 2291\,\text{m/s}$",
+           "$\approx 916\,\text{m/s}$",
+           "$\approx 3750\,\text{m/s}$"],
+     ok:1,
+     fb:"$\Delta v = 2500\ln(1000/400) = 2500\ln(2.5) \approx 2500\times 0.916 \approx 2291\,\text{m/s}$."},
+    {type:"vf",
+     txt:"Cuando $\beta=0$ y $\mu\to 0$ (sin consumo), la posición de Tsiolkovsky recupera la cinemática clásica $x=x_0+v_0 t-\frac{1}{2}gt^2$.",
+     ok:true,
+     fb:"VERDADERO. Sin fricción ni quema: m·dv/dt = −mg → v = v₀−gt → x = x₀+v₀t−½gt²."},
+    {type:"fill",
+     txt:"El Teorema de Tsiolkovsky dice que $\Delta v$ depende logarítmicamente de la razón de masas _____, lo que significa que duplicar $m_0/m_f$ no duplica $\Delta v$.",
+     ok:["m0/mf","m₀/mf","m0/m_f"],
+     fb:"Δv = vₑ·ln(m₀/mf). Si m₀/mf se cuadruplica, Δv solo se duplica (logaritmo)."}
+  ]
+},
+5:{
+  title:"Análisis Paramétrico en función de β",
+  qs:[
+    {type:"mc",
+     txt:"¿Qué le sucede a la velocidad terminal $|v_\infty|$ si se aumenta mucho $\beta$?",
+     opts:["Aumenta al infinito",
+           "Se mantiene igual",
+           "Se reduce (tiende a cero)",
+           "Se vuelve negativa"],
+     ok:2,
+     fb:"$|v_\infty| = mg/\beta \to 0$ cuando $\beta\to\infty$. Con mucha fricción la velocidad terminal es muy pequeña."},
+    {type:"mc",
+     txt:"Para $\beta$ pequeño, ¿cómo se comporta la constante de tiempo $\tau = m/\beta$?",
+     opts:["Es pequeña — el misil llega rápido a $v_\infty$",
+           "Es grande — el misil tarda mucho en llegar a $v_\infty$",
+           "No tiene efecto sobre el movimiento",
+           "Es igual a g"],
+     ok:1,
+     fb:"$\tau = m/\beta \to \infty$ cuando $\beta\to 0$. El misil tarda mucho más en acercarse a la velocidad terminal."},
+    {type:"vf",
+     txt:"Para cualquier $\beta>0$, la velocidad siempre converge exponencialmente a la velocidad terminal $v_\infty = -mg/\beta$.",
+     ok:true,
+     fb:"VERDADERO. v(t) = v∞ + (v₀−v∞)·e^(−βt/m) converge exponencialmente para todo β > 0."},
+    {type:"fill",
+     txt:"Si se duplica $\beta$, la constante de tiempo $\tau$ se _____ a la mitad, y la velocidad terminal $|v_\infty|$ también se _____ a la mitad.",
+     ok:["reduce reduce","disminuye disminuye","reduce disminuye","disminuye reduce"],
+     fb:"$\tau = m/\beta \to m/(2\beta) = \tau/2$ (se reduce). $|v_\infty| = mg/\beta \to mg/(2\beta) = |v_\infty|/2$ (también se reduce)."}
+  ]
+},
+6:{
+  title:"Movimiento en Marte",
+  qs:[
+    {type:"mc",
+     txt:"La gravedad en Marte es aproximadamente:",
+     opts:["$6.67\,\text{m/s}^2$","$1.62\,\text{m/s}^2$","$3.72\,\text{m/s}^2$","$9.81\,\text{m/s}^2$"],
+     ok:2,
+     fb:"$g_\text{Marte}\approx 3.72\,\text{m/s}^2\approx 0.38\,g_\oplus$. ($1.62\,\text{m/s}^2$ es la Luna; $9.81\,\text{m/s}^2$ es la Tierra)."},
+    {type:"mc",
+     txt:"Con $m=400\,\text{kg}$, $g_M=3.72\,\text{m/s}^2$, $\beta_M=0.05\,\text{kg/s}$, la velocidad terminal en Marte vale:",
+     opts:["$-744\,\text{m/s}$","$-29760\,\text{m/s}$","$-7848\,\text{m/s}$","$-18.6\,\text{m/s}$"],
+     ok:1,
+     fb:"$v_\infty = -m\,g_M/\beta_M = -400\times 3.72/0.05 = -29760\,\text{m/s}$. La baja fricción en Marte permite velocidades terminales enormes."},
+    {type:"vf",
+     txt:"En Marte, la menor densidad atmosférica implica $\beta_M \ll \beta_T$, por lo que el misil mantiene su velocidad durante más tiempo que en la Tierra.",
+     ok:true,
+     fb:"VERDADERO. $\tau=m/\beta$: con $\beta_M\ll\beta_T \Rightarrow \tau_\text{Marte}\gg\tau_\text{Tierra}$. El misil tarda mucho más en perder velocidad."},
+    {type:"fill",
+     txt:"Las soluciones analíticas en Marte son idénticas en forma a las de la Tierra, solo se reemplazan $g \leftarrow$ _____ y $\beta \leftarrow$ _____.",
+     ok:["gm bm","gM βM","g_marte beta_marte","gMarte betaMarte"],
+     fb:"La estructura de las ecuaciones es la misma. Solo cambian los parámetros: g ← g_M = 3.72 m/s² y β ← β_M."}
+  ]
+},
+7:{
+  title:"Diferencias de Primer Orden (Euler Explícito)",
+  qs:[
+    {type:"mc",
+     txt:"El error global del método de Euler es:",
+     opts:["$\mathcal{O}(h^2)$","$\mathcal{O}(h^3)$","$\mathcal{O}(h)$","$\mathcal{O}(h^4)$"],
+     ok:2,
+     fb:"Euler explícito tiene error local $\mathcal{O}(h^2)$ y error global $\mathcal{O}(h)$. Al reducir $h$ a la mitad, el error global se reduce a la mitad."},
+    {type:"mc",
+     txt:"La ecuación de iteración para la posición en Euler es $\vec{x}_{k+1} = ?$",
+     opts:["$\vec{x}_k + h\,\vec{a}_k$",
+           "$\vec{x}_k + h\,\vec{v}_k$",
+           "$2\vec{x}_k - \vec{x}_{k-1} + h^2\vec{a}_k$",
+           "$\vec{x}_k + h^2\vec{v}_k$"],
+     ok:1,
+     fb:"Euler: $\vec{x}_{k+1} = \vec{x}_k + h\vec{v}_k$ (posición) y $\vec{v}_{k+1} = \vec{v}_k + h\vec{a}_k$ (velocidad)."},
+    {type:"vf",
+     txt:"Si se reduce el paso $h$ a la mitad en Euler, el error global se reduce también a la mitad.",
+     ok:true,
+     fb:"VERDADERO. Error global $\mathcal{O}(h)$: si $h\to h/2$, el error se divide entre 2."},
+    {type:"fill",
+     txt:"En Euler, la nueva velocidad se calcula como $v_{k+1} = v_k + h\cdot$_____, donde ese término incluye el empuje, la gravedad y la _____.",
+     ok:["aceleracion friccion","a_k friccion","aₖ friccion","aceleración fricción"],
+     fb:"$v_{k+1} = v_k + h\,a_k$, donde $a_k = (\text{empuje} - m\,g - \beta v)/m$. Incluye empuje, gravedad y fricción."}
+  ]
+},
+8:{
+  title:"Diferencias de Segundo Orden (Leapfrog/Verlet)",
+  qs:[
+    {type:"mc",
+     txt:"El error global del método de Verlet es:",
+     opts:["$\mathcal{O}(h)$","$\mathcal{O}(h^2)$","$\mathcal{O}(h^3)$","$\mathcal{O}(h^4)$"],
+     ok:1,
+     fb:"Verlet tiene error local $\mathcal{O}(h^4)$ pero error global $\mathcal{O}(h^2)$. Mucho más preciso que Euler con el mismo $h$."},
+    {type:"mc",
+     txt:"La fórmula de Verlet para la posición es:",
+     opts:["$\vec{x}_{k+1} = \vec{x}_k + h\vec{v}_k$",
+           "$\vec{x}_{k+1} = \vec{x}_k + h\vec{v}_k + \tfrac{1}{2}h^2\vec{a}_k$",
+           "$\vec{x}_{k+1} = 2\vec{x}_k - \vec{x}_{k-1} + h^2\vec{a}_k$",
+           "$\vec{x}_{k+1} = \vec{x}_{k-1} + 2h\vec{v}_k$"],
+     ok:2,
+     fb:"Verlet estándar: $\vec{x}_{k+1} = 2\vec{x}_k - \vec{x}_{k-1} + h^2\vec{a}_k$. Requiere dos pasos anteriores."},
+    {type:"vf",
+     txt:"El método de Verlet necesita dos estados iniciales ($\vec{x}_0$ y $\vec{x}_1$) porque usa $\vec{x}_{k-1}$ en la fórmula.",
+     ok:true,
+     fb:"VERDADERO. Como la fórmula usa $\vec{x}_{k-1}$, necesita $x_0$ y $x_1$. Se obtiene $x_1$ con un paso de Euler."},
+    {type:"fill",
+     txt:"La velocidad centrada de segundo orden en Verlet se calcula como $v_k = \dfrac{\vec{x}_{k+1} - \vec{x}_{k-1}}{\ \_\_\_\_\_\ }$.",
+     ok:["2h","(2h)","2·h"],
+     fb:"Diferencia centrada: $v_k = (x_{k+1}-x_{k-1})/(2h)$. Error $\mathcal{O}(h^2)$."}
+  ]
+},
+9:{
+  title:"Código Python: euler_1",
+  code:`<span class="kw">dm_dt</span>  = -mu <span class="kw">if</span> mk > <span class="nm">0.01</span> * m0 <span class="kw">else</span> <span class="nm">0.0</span>
+<span class="kw">thrust</span> = -ve * dm_dt / mk
+a_k    = thrust - g - (beta / mk) * vk
+v[k+<span class="nm">1</span>] = vk + h * a_k
+x[k+<span class="nm">1</span>] = x[k] + h * vk
+m[k+<span class="nm">1</span>] = <span class="kw">max</span>(mk + dm_dt * h, <span class="nm">0.01</span> * m0)`,
+  qs:[
+    {type:"mc",
+     txt:"¿Qué representa la condición mk > 0.01 * m0?",
+     opts:["Verifica que la velocidad no sea cero",
+           "Detiene el empuje cuando queda solo el 1% de masa inicial (combustible agotado)",
+           "Activa la fricción del aire",
+           "Limita el paso de tiempo"],
+     ok:1,
+     fb:"Cuando mk ≤ 0.01·m₀ el combustible se agota (queda 1% = estructura) → dm_dt = 0 → thrust = 0."},
+    {type:"mc",
+     txt:"¿Por qué thrust = -ve * dm_dt / mk da un valor positivo?",
+     opts:["Porque ve > 0",
+           "Porque dm_dt = −μ < 0, entonces −ve × (−μ) > 0",
+           "Porque mk > 0",
+           "Porque se divide entre la masa"],
+     ok:1,
+     fb:"$\text{thrust} = -v_e\cdot\text{dm\_dt}/m_k = -v_e(-\mu)/m_k = v_e\mu/m_k > 0$. El doble negativo produce empuje positivo."},
+    {type:"vf",
+     txt:"La línea m[k+1] = max(..., 0.01 * m0) evita que la masa sea cero y así previene una división por cero al calcular thrust.",
+     ok:true,
+     fb:"VERDADERO. Si m → 0, thrust → ∞. El max() garantiza mk ≥ 0.01·m₀ > 0 siempre."},
+    {type:"fill",
+     txt:"En euler_1, la posición x[k+1] usa la velocidad actual vk (no la nueva). Esto corresponde al método de Euler _____ (no Euler-Cromer).",
+     ok:["explicito","explícito","explicit","forward"],
+     fb:"Euler explícito (forward Euler): x[k+1] = x[k] + h·vk usa la velocidad del paso actual, no la actualizada."}
+  ]
+},
+10:{
+  title:"Código Python: verlet_2",
+  code:`x[k+<span class="nm">1</span>] = <span class="nm">2</span>*x[k] - x[k-<span class="nm">1</span>] + h**<span class="nm">2</span> * ak
+<span class="kw">if</span> k >= <span class="nm">1</span>:
+    v[k] = (x[k+<span class="nm">1</span>] - x[k-<span class="nm">1</span>]) / (<span class="nm">2</span>*h)
+m[k+<span class="nm">1</span>] = <span class="kw">max</span>(mk + dm_dt * h, <span class="nm">0.01</span> * m0)
+<span class="cm"># --- fuera del bucle ---</span>
+v[N] = v[N-<span class="nm">1</span>] + h * aceleracion(m[N], v[N-<span class="nm">1</span>], <span class="nm">0</span>)`,
+  qs:[
+    {type:"mc",
+     txt:"¿Por qué se calcula v[k] después de obtener x[k+1]?",
+     opts:["Para ahorrar memoria",
+           "Porque necesita x[k+1] en la fórmula centrada (xₖ₊₁ − xₖ₋₁)/2h",
+           "Para evitar errores de índice",
+           "Porque Verlet no usa la velocidad en el paso de posición"],
+     ok:1,
+     fb:"$v_k = (x_{k+1}-x_{k-1})/(2h)$ requiere conocer $x_{k+1}$. Por eso se calcula después de obtener \texttt{x[k+1]}."},
+    {type:"mc",
+     txt:"La última línea v[N] = v[N-1] + h * aceleracion(..., 0) se ejecuta fuera del bucle porque:",
+     opts:["Es un error tipográfico",
+           "La velocidad centrada en k=N requeriría x[N+1] que no existe",
+           "Solo aplica cuando β = 0",
+           "Es opcional y puede eliminarse"],
+     ok:1,
+     fb:"La velocidad centrada en $k=N$ requeriría $x_{N+1}$ que no existe. Se usa un paso de Euler para el último punto."},
+    {type:"vf",
+     txt:"Si se duplica el paso h en Verlet, el error global se duplica (factor ×2).",
+     ok:false,
+     fb:"FALSO. El error global de Verlet es $\mathcal{O}(h^2)$. Si $h\to 2h$, el error se multiplica por $4$ (factor $\times 4$), no $\times 2$."},
+    {type:"fill",
+     txt:"El primer paso de verlet_2 usa Euler para obtener x₁ porque Verlet necesita _____ estados iniciales y solo tenemos _____.",
+     ok:["dos uno","2 1","dos 1","2 uno"],
+     fb:"Verlet necesita x₀ y x₁ (dos estados). Solo tenemos x₀. Se usa Euler para calcular x₁."}
+  ]
+}
+};
+
+// ══════════════════════════════════════════════════════════
+//  CLAVE DE RESPUESTAS (del .tex)
+// Q1:b,b,V,empuje/peso/fricción | Q2:b,c,F,120 | Q3:b,b,V,...
+// Q4:b,b,V,m0/mf | Q5:c,b,V,reduce/reduce | Q6:c,b,V,gM/βM
+// Q7:c,b,V,aceleración/fricción | Q8:b,c,V,2h | Q9:b,b,V,explícito
+// Q10:b,b,F,dos/uno
+// ══════════════════════════════════════════════════════════
+
+const TIMER_SEC = 300; // 5 min por quiz
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let S={
+  student:{},
+  selectedQ:[],
+  flat:[],
+  cur:0, answers:[], score:0,
+  t0:0, timer:null, tLeft:0, done:false,
+  qzBreak:{}
+};
+
+// ══════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function toggleQ(btn,n){
+  btn.classList.toggle('on');
+  if(!document.querySelector('.qsel-btn.on')) btn.classList.add('on');
+}
+function getSelected(){
+  return [...document.querySelectorAll('.qsel-btn.on')]
+    .map(b=>parseInt(b.textContent.replace('Q','')));
+}
+
+// GitHub desde URL
+function ghToken(){ return new URLSearchParams(window.location.search).get('token')||''; }
+function ghRepo(){  return new URLSearchParams(window.location.search).get('repo')||''; }
+
+// ══════════════════════════════════════════════════════════
+//  RECORDS
+// ══════════════════════════════════════════════════════════
+const KEY='miniquiz_misil_2026';
+function getRecs(){try{return JSON.parse(localStorage.getItem(KEY)||'[]');}catch{return[];}}
+function saveRec(r){const a=getRecs();a.push(r);a.sort((x,y)=>y.nota-x.nota);localStorage.setItem(KEY,JSON.stringify(a));}
+function doClr(){if(confirm('¿Eliminar todo el registro local?')){localStorage.removeItem(KEY);renderLB();}}
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  if(ghToken()&&ghRepo()){
+    document.getElementById('gh-info').classList.add('show');
+  }
+  // Aplicar colores a los botones de selección de quiz
+  document.querySelectorAll('.qsel-btn').forEach(btn=>{
+    const n=parseInt(btn.textContent.replace('Q',''));
+    btn.style.setProperty('--qc',QZ_COLORS[n]);
+    btn.addEventListener('click',()=>{
+      if(btn.classList.contains('on')){
+        btn.style.borderColor=QZ_COLORS[n];
+        btn.style.color=QZ_COLORS[n];
+        btn.style.background=QZ_COLORS_L[n];
+      } else {
+        btn.style.borderColor=''; btn.style.color=''; btn.style.background='';
+      }
+    });
+  });
+  // color inicial del Q1 que está on
+  const q1=document.querySelector('.qsel-btn.on');
+  if(q1){q1.style.borderColor=QZ_COLORS[1];q1.style.color=QZ_COLORS[1];q1.style.background=QZ_COLORS_L[1];}
+});
+
+// ══════════════════════════════════════════════════════════
+//  PASSWORDS
+// ══════════════════════════════════════════════════════════
+// Default passwords: Q1="quiz1", Q2="quiz2", ... Q10="quiz10"
+// Teacher can override via URL: ?p1=abc&p2=def&...&p10=xyz
+function getQzPassword(n){
+  const url=new URLSearchParams(window.location.search);
+  return url.get('p'+n) || ('quiz'+n);
+}
+
+let PW_PENDING_QZ=null; // which quizzes are waiting for password unlock
+let PW_UNLOCKED=new Set(); // already unlocked quiz numbers
+
+function askPasswords(qzNums, callback){
+  // Filter out already unlocked
+  const locked = qzNums.filter(n=>!PW_UNLOCKED.has(n));
+  if(!locked.length){ callback(); return; }
+  // Ask one by one
+  let idx=0;
+  function askNext(){
+    if(idx>=locked.length){ callback(); return; }
+    const qn=locked[idx];
+    const col=QZ_COLORS[qn];
+    const overlay=document.getElementById('pw-overlay');
+    document.getElementById('pw-icon').textContent='🔐';
+    document.getElementById('pw-title').textContent=`Quiz ${qn}: ${QUIZZES[qn].title}`;
+    document.getElementById('pw-title').style.color=col;
+    document.getElementById('pw-sub').textContent='Ingresa la contraseña para acceder a este quiz';
+    document.getElementById('pw-btn').style.background=col;
+    document.getElementById('pw-btn').style.color='#fff';
+    document.getElementById('pw-inp').value='';
+    document.getElementById('pw-err').style.display='none';
+    document.getElementById('pw-inp').classList.remove('error');
+    overlay.classList.remove('hidden');
+    PW_PENDING_QZ={qn, onOk:()=>{ PW_UNLOCKED.add(qn); idx++; askNext(); }};
+    setTimeout(()=>document.getElementById('pw-inp').focus(),100);
+  }
+  askNext();
+}
+
+function checkPassword(){
+  if(!PW_PENDING_QZ) return;
+  const {qn, onOk}=PW_PENDING_QZ;
+  const val=document.getElementById('pw-inp').value.trim();
+  if(val===getQzPassword(qn)){
+    document.getElementById('pw-overlay').classList.add('hidden');
+    PW_PENDING_QZ=null;
+    onOk();
+  } else {
+    const inp=document.getElementById('pw-inp');
+    inp.classList.add('error');
+    document.getElementById('pw-err').style.display='block';
+    setTimeout(()=>{inp.classList.remove('error');inp.value='';inp.focus();},600);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BEGIN
+// ══════════════════════════════════════════════════════════
+function begin(){
+  const nm=document.getElementById('i-name').value.trim();
+  const ci=document.getElementById('i-ci').value.trim();
+  const sel=getSelected();
+  const er=document.getElementById('reg-err');
+  if(!nm||!ci||!sel.length){er.style.display='block';return;}
+  er.style.display='none';
+
+  // Ask passwords for each selected quiz
+  askPasswords(sel, ()=>{
+    S.student={nm,ci};
+    S.selectedQ=sel;
+    S.flat=[];
+    sel.forEach(qn=>QUIZZES[qn].qs.forEach((q,i)=>S.flat.push({qzNum:qn,qIdx:i,q})));
+    S.cur=0; S.answers=[]; S.score=0; S.done=false;
+    S.t0=Date.now();
+    S.tLeft=sel.length*TIMER_SEC;
+    S.qzBreak={};
+    sel.forEach(n=>S.qzBreak[n]={ok:0,tot:0});
+
+    show('s-quiz');
+    renderQ();
+    startTimer();
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER QUESTION
+// ══════════════════════════════════════════════════════════
+function renderQ(){
+  const {qzNum,qIdx,q}=S.flat[S.cur];
+  const n=S.cur+1; const tot=S.flat.length;
+  const col=QZ_COLORS[qzNum]; const colL=QZ_COLORS_L[qzNum];
+
+  // topbar
+  document.getElementById('qz-label').textContent=`Q${qzNum} · P${qIdx+1}`;
+  document.getElementById('qz-label').style.color=col;
+  document.getElementById('prog-fill').style.width=((n-1)/tot*100)+'%';
+  document.getElementById('prog-fill').style.background=col;
+
+  // header card
+  const typeMap={mc:'Opción Múltiple',vf:'Verdadero / Falso',fill:'Completar'};
+  const tag=document.getElementById('qtag');
+  tag.textContent=`Quiz ${qzNum}: ${QUIZZES[qzNum].title} · ${typeMap[q.type]}`;
+  tag.style.color=col;
+  document.getElementById('qcard').style.borderLeftColor=col;
+  document.getElementById('qcard').style.borderLeftWidth='4px';
+  document.getElementById('qcard').style.borderLeftStyle='solid';
+  document.getElementById('qnum').textContent=`Pregunta ${qIdx+1} de 4`;
+
+  // texto
+  document.getElementById('qtxt').innerHTML=q.txt;
+
+  // código si existe
+  const codeDiv=document.getElementById('qcode');
+  if(QUIZZES[qzNum].code && qIdx===0){
+    codeDiv.style.display='block';
+    codeDiv.innerHTML=`<div class="code-blk">${QUIZZES[qzNum].code}</div>`;
+  } else {
+    codeDiv.style.display='none';
+  }
+
+  // body
+  const body=document.getElementById('qbody');
+  body.innerHTML='';
+
+  if(q.type==='mc'){
+    const letters=['a','b','c','d'];
+    const wrap=document.createElement('div'); wrap.className='opts';
+    q.opts.forEach((o,i)=>{
+      const b=document.createElement('button');
+      b.className='opt-btn'; b.dataset.i=i;
+      b.innerHTML=`<span class="opt-key">${letters[i]})</span><span>${o}</span>`;
+      b.onclick=()=>pickMC(b,i,col);
+      wrap.appendChild(b);
+    });
+    body.appendChild(wrap);
+
+  } else if(q.type==='vf'){
+    const wrap=document.createElement('div'); wrap.className='vf-row';
+    ['Verdadero','Falso'].forEach((lbl,i)=>{
+      const b=document.createElement('button');
+      b.className='vf-btn'; b.dataset.v=(i===0);
+      b.textContent=lbl;
+      b.onclick=()=>pickVF(b,i===0);
+      wrap.appendChild(b);
+    });
+    body.appendChild(wrap);
+
+  } else if(q.type==='fill'){
+    const inp=document.createElement('input');
+    inp.className='fill-inp'; inp.type='text';
+    inp.placeholder='Escribe tu respuesta...'; inp.id='fill-inp';
+    inp.onkeydown=e=>{if(e.key==='Enter'&&!S.done)submitFill();};
+    const sb=document.createElement('button');
+    sb.className='fill-submit'; sb.textContent='Confirmar';
+    sb.onclick=()=>submitFill();
+    body.appendChild(inp); body.appendChild(sb);
+  }
+
+  // reset feedback
+  const fb=document.getElementById('fb-box');
+  fb.className='fb-box';
+  document.getElementById('btn-next').disabled=true;
+  document.getElementById('live').textContent=S.score;
+  S.done=false;
+  // Render LaTeX
+  if(window.MathJax) MathJax.typesetPromise(document.querySelectorAll(".qtxt,.opts,.vf-row,.fill-inp,.fb-box,#qcode"));
+}
+
+// ══════════════════════════════════════════════════════════
+//  ANSWER HANDLERS
+// ══════════════════════════════════════════════════════════
+function pickMC(btn,idx,col){
+  if(S.done) return; S.done=true;
+  const {q}=S.flat[S.cur];
+  const isOk=idx===q.ok;
+  if(isOk) S.score++;
+  document.querySelectorAll('.opt-btn').forEach(b=>{
+    b.disabled=true;
+    const i=parseInt(b.dataset.i);
+    if(i===q.ok) b.classList.add('ok');
+    else if(i===idx&&!isOk) b.classList.add('ko');
+  });
+  showFB(isOk,q.fb);
+  S.answers.push({type:'mc',given:idx,ok:q.ok,res:isOk,q,qzNum:S.flat[S.cur].qzNum});
+  S.qzBreak[S.flat[S.cur].qzNum].tot++;
+  if(isOk) S.qzBreak[S.flat[S.cur].qzNum].ok++;
+  document.getElementById('btn-next').disabled=false;
+  document.getElementById('live').textContent=S.score;
+}
+
+function pickVF(btn,val){
+  if(S.done) return; S.done=true;
+  const {q}=S.flat[S.cur];
+  const isOk=val===q.ok;
+  if(isOk) S.score++;
+  document.querySelectorAll('.vf-btn').forEach(b=>{
+    b.disabled=true;
+    const bv=b.dataset.v==='true';
+    if(bv===q.ok) b.classList.add('ok');
+    else if(bv===val&&!isOk) b.classList.add('ko');
+  });
+  showFB(isOk,q.fb);
+  S.answers.push({type:'vf',given:val,ok:q.ok,res:isOk,q,qzNum:S.flat[S.cur].qzNum});
+  S.qzBreak[S.flat[S.cur].qzNum].tot++;
+  if(isOk) S.qzBreak[S.flat[S.cur].qzNum].ok++;
+  document.getElementById('btn-next').disabled=false;
+  document.getElementById('live').textContent=S.score;
+}
+
+function submitFill(){
+  if(S.done) return;
+  const inp=document.getElementById('fill-inp');
+  const val=(inp?.value||'').trim().toLowerCase().replace(/\s+/g,' ');
+  S.done=true;
+  if(inp){inp.disabled=true;}
+  document.querySelectorAll('.fill-submit').forEach(b=>b.disabled=true);
+  const {q}=S.flat[S.cur];
+  const isOk=q.ok.some(a=>val.includes(a.toLowerCase()));
+  if(isOk) S.score++;
+  showFB(isOk,q.fb);
+  S.answers.push({type:'fill',given:val,ok:q.ok[0],res:isOk,q,qzNum:S.flat[S.cur].qzNum});
+  S.qzBreak[S.flat[S.cur].qzNum].tot++;
+  if(isOk) S.qzBreak[S.flat[S.cur].qzNum].ok++;
+  document.getElementById('btn-next').disabled=false;
+  document.getElementById('live').textContent=S.score;
+}
+
+function showFB(ok,txt){
+  const fb=document.getElementById('fb-box');
+  document.getElementById('fb-ico').textContent=ok?'✓':'✗';
+  document.getElementById('fb-txt').textContent=txt;
+  fb.className='fb-box show '+(ok?'ok':'ko');
+}
+
+// ══════════════════════════════════════════════════════════
+//  NEXT / FINISH
+// ══════════════════════════════════════════════════════════
+function nextQ(){
+  if(!S.done){
+    const {q,qzNum}=S.flat[S.cur];
+    S.answers.push({type:q.type,given:null,ok:q.type==='mc'?q.ok:q.ok,res:false,q,qzNum});
+    S.qzBreak[qzNum].tot++;
+  }
+  S.cur++;
+  if(S.cur>=S.flat.length){finish();return;}
+  renderQ();
+}
+
+function finish(){
+  clearInterval(S.timer);
+  const elapsed=Math.round((Date.now()-S.t0)/1000);
+  const tot=S.flat.length;
+  const ok=S.answers.filter(a=>a.res).length;
+  const nota=parseFloat((ok/tot*100).toFixed(1));
+  const pass=nota>=51;
+
+  const rec={
+    nm:S.student.nm, ci:S.student.ci,
+    nota, ok, tot, elapsed,
+    quizzes:S.selectedQ.join(','),
+    breakdown:S.qzBreak,
+    date:new Date().toLocaleString('es-BO')
+  };
+  saveRec(rec);
+
+  // resultados
+  document.getElementById('res-name').textContent=S.student.nm;
+  document.getElementById('res-ci').textContent=`CI: ${S.student.ci}`;
+  const gp=document.getElementById('gpct');
+  gp.textContent=nota+'%'; gp.className='gpct '+(pass?'pass':'fail');
+  document.getElementById('grade-ring').className='grade-ring '+(pass?'pass':'fail');
+  const vr=document.getElementById('res-verd');
+  vr.textContent=pass?'✓ APROBADO':'✗ REPROBADO';
+  vr.className='verd '+(pass?'pass':'fail');
+  document.getElementById('rs-ok').textContent=ok;
+  document.getElementById('rs-ko').textContent=tot-ok;
+  document.getElementById('rs-tot').textContent=tot;
+  document.getElementById('rs-t').textContent=elapsed+'s';
+
+  // puntaje por quiz
+  const qzEl=document.getElementById('qz-scores');
+  qzEl.innerHTML=S.selectedQ.map(n=>{
+    const b=S.qzBreak[n]||{ok:0,tot:0};
+    const pct=b.tot>0?(b.ok/b.tot*100).toFixed(0):0;
+    const col=QZ_COLORS[n]; const colL=QZ_COLORS_L[n];
+    return `<div class="qzs" style="background:${colL};border-color:${col}">
+      <div class="qzs-label" style="color:${col}">Q${n}</div>
+      <div class="qzs-val" style="color:${col}">${b.ok}/${b.tot}</div>
+      <div style="font-size:.58rem;color:${col}">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  // revisión
+  const revEl=document.getElementById('rev-list');
+  revEl.innerHTML=S.answers.map((a,i)=>{
+    const col=QZ_COLORS[a.qzNum];
+    const yt=a.given===null?'Sin respuesta':
+             a.type==='mc'?a.q.opts[a.given]:
+             a.type==='vf'?(a.given?'Verdadero':'Falso'):a.given;
+    const corr=a.type==='mc'?a.q.opts[a.ok]:
+               a.type==='vf'?(a.ok?'Verdadero':'Falso'):a.q.ok[0];
+    return `<div class="rev-item ${a.res?'ok':'ko'}" style="border-left-color:${col}">
+      <div class="rev-q"><strong style="color:${col}">Q${a.qzNum}·P${S.flat[i].qIdx+1}</strong>&nbsp;
+        ${a.q.txt.replace(/<[^>]+>/g,' ').substring(0,80)}…</div>
+      <div class="rev-ans">
+        <span class="rev-yours">Tu respuesta: ${yt}</span>
+        ${!a.res?`<span class="rev-corr">✓ ${corr}</span>`:''}
+      </div>
+      <div class="rev-expl">${a.q.fb}</div>
+    </div>`;
+  }).join('');
+
+  renderLB(rec.ci);
+  show('s-res');
+  saveToGitHub(rec);
+}
+
+// ══════════════════════════════════════════════════════════
+//  TIMER
+// ══════════════════════════════════════════════════════════
+function startTimer(){
+  updTimer();
+  S.timer=setInterval(()=>{
+    S.tLeft--; updTimer();
+    if(S.tLeft<=0){
+      clearInterval(S.timer);
+      if(!S.done) finish();
+    }
+  },1000);
+}
+function updTimer(){
+  const el=document.getElementById('timer-badge');
+  const m=Math.floor(S.tLeft/60); const s=S.tLeft%60;
+  el.textContent=`${m}:${s.toString().padStart(2,'0')}`;
+  el.className='timer-badge'+(S.tLeft<=30?' u':S.tLeft<=60?' w':'');
+}
+
+// ══════════════════════════════════════════════════════════
+//  LEADERBOARD
+// ══════════════════════════════════════════════════════════
+function renderLB(myCI){
+  const recs=getRecs(); const el=document.getElementById('lb-list');
+  if(!recs.length){
+    el.innerHTML='<div style="text-align:center;padding:1.2rem;color:var(--muted);font-size:.78rem">Sin registros aún.</div>';
+    return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  el.innerHTML=recs.slice(0,20).map((r,i)=>{
+    const pass=r.nota>=51; const me=r.ci===myCI;
+    return `<div class="lb-row ${me?'me':''}">
+      <div class="lb-rank">${medals[i]||(i+1)}</div>
+      <div style="flex:1">
+        <div class="lb-name">${r.nm}</div>
+        <div class="lb-meta">CI: ${r.ci} · Q:${r.quizzes} · ${r.date}</div>
+      </div>
+      <div>
+        <div class="lb-nota ${pass?'pass':'fail'}">${r.nota}%</div>
+        <div class="lb-meta" style="text-align:right">${r.ok}/${r.tot} · ${r.elapsed}s</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  GITHUB SAVE
+// ══════════════════════════════════════════════════════════
+async function saveToGitHub(rec){
+  const dot=document.getElementById('gh-dot');
+  const msg=document.getElementById('gh-msg');
+  const token=ghToken(); const repo=ghRepo();
+  if(!token||!repo){
+    dot.style.background='#adb5bd';
+    msg.textContent='Sin token GitHub — nota guardada solo localmente.';
+    return;
+  }
+  dot.style.background='#ffd166';
+  msg.textContent='Guardando en GitHub...';
+  const body=[
+    `## Resultado del Mini Quiz`,``,
+    `| Campo | Valor |`,`|---|---|`,
+    `| **Nombre** | ${rec.nm} |`,
+    `| **CI** | ${rec.ci} |`,
+
+    `| **Nota** | ${rec.nota}% (${rec.ok}/${rec.tot}) |`,
+    `| **Estado** | ${rec.nota>=51?'✅ APROBADO':'❌ REPROBADO'} |`,
+    `| **Quizzes** | Q${rec.quizzes} |`,
+    `| **Tiempo** | ${rec.elapsed}s |`,
+    `| **Fecha** | ${rec.date} |`,
+    ``,`### Desglose`,
+    ...Object.entries(rec.breakdown).map(([n,b])=>`- Q${n}: ${b.ok}/${b.tot} (${b.tot>0?(b.ok/b.tot*100).toFixed(0):0}%)`),
+    ``,`\`\`\`json`,JSON.stringify(rec,null,2),`\`\`\``
+  ].join('\n');
+  try{
+    const r=await fetch(`https://api.github.com/repos/${repo}/issues`,{
+      method:'POST',
+      headers:{'Authorization':`token ${token}`,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+      body:JSON.stringify({title:`[Quiz] ${rec.nm} · CI:${rec.ci} · ${rec.nota}% · ${rec.date}`,body,labels:['quiz-nota']})
+    });
+    if(r.ok){
+      const d=await r.json();
+      dot.style.background='#2D6A4F';
+      msg.innerHTML=`✓ Guardado · Issue #${d.number} · <a href="${d.html_url}" target="_blank" style="color:#2D6A4F">Ver en GitHub →</a>`;
+    } else { throw new Error('HTTP '+r.status); }
+  }catch(e){
+    dot.style.background='#E63946';
+    msg.textContent='Error al guardar en GitHub: '+e.message;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  CSV + RETRY
+// ══════════════════════════════════════════════════════════
+function doCSV(){
+  const recs=getRecs(); if(!recs.length){alert('No hay registros.');return;}
+  const h='Nombre,CI,Nota(%),Correctas,Total,Tiempo(s),Quizzes,Fecha';
+  const rows=recs.map(r=>`"${r.nm}","${r.ci}",${r.nota},${r.ok},${r.tot},${r.elapsed},"${r.quizzes}","${r.date}"`);
+  const blob=new Blob([[h,...rows].join('\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=`notas_miniquiz_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+function retry(){
+  document.getElementById('i-name').value=S.student.nm||'';
+  document.getElementById('i-ci').value=S.student.ci||'';
+  
+  document.querySelectorAll('.qsel-btn').forEach(b=>{
+    b.classList.remove('on'); b.style.borderColor=''; b.style.color=''; b.style.background='';
+  });
+  const first=document.querySelector('.qsel-btn');
+  if(first){ first.classList.add('on'); first.style.borderColor=QZ_COLORS[1]; first.style.color=QZ_COLORS[1]; first.style.background=QZ_COLORS_L[1]; }
+  show('s-reg');
+}
+</script>
+</body>
+</html>
