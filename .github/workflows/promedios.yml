@@ -1,0 +1,43 @@
+name: Calcular Promedios de Estudiantes
+ 
+on:
+  workflow_dispatch:        # ejecución manual desde GitHub
+  schedule:
+    - cron: '0 8 * * *'    # automático cada día a las 08:00 UTC
+ 
+# ── Permisos necesarios para leer Issues ──
+permissions:
+  issues:   read
+  contents: write
+ 
+jobs:
+  calcular:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+ 
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+ 
+      - name: Instalar dependencias
+        run: pip install requests
+ 
+      - name: Calcular promedios
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO:  ${{ github.repository }}
+        run: python3 calcular_promedios.py
+ 
+      - name: Subir reporte CSV como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-promedios
+          path: promedios.csv
+          retention-days: 30
+ 
+      - name: Mostrar reporte en consola
+        run: cat reporte.txt
