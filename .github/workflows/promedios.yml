@@ -1,1 +1,14 @@
+name: Calcular Promedios
+on:
+  workflow_dispatch:   # se ejecuta manualmente
 
+jobs:
+  promedios:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Calcular
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO:  ${{ github.repository }}
+        run: python3 calcular_promedios.py
